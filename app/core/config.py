@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 
 def _as_bool(value: str | None, default: bool = False) -> bool:
@@ -12,6 +13,13 @@ def _as_list(value: str | None, default: list[str] | None = None) -> list[str]:
     if value is None:
         return list(default or [])
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _default_usage_log_path(storage_root: str = "/data") -> str:
+    persistent_root = Path(storage_root)
+    if persistent_root.is_dir():
+        return str(persistent_root / "usage_logs" / "generate_patch_requests.jsonl")
+    return "data/usage_logs/generate_patch_requests.jsonl"
 
 
 @dataclass(frozen=True)
@@ -44,7 +52,7 @@ def get_settings() -> Settings:
             os.getenv("CORS_ALLOW_ORIGINS"),
             ["http://localhost:5173", "http://127.0.0.1:5173"],
         ),
-        usage_log_path=os.getenv("USAGE_LOG_PATH", "data/usage_logs/generate_patch_requests.jsonl"),
+        usage_log_path=os.getenv("USAGE_LOG_PATH", _default_usage_log_path()),
         pipeline_base_url=os.getenv("PIPELINE_BASE_URL", "").rstrip("/"),
         pipeline_generate_path=os.getenv("PIPELINE_GENERATE_PATH", "/generate-patch"),
         pipeline_api_key=os.getenv("PIPELINE_API_KEY", ""),
