@@ -8,12 +8,20 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _as_list(value: str | None, default: list[str] | None = None) -> list[str]:
+    if value is None:
+        return list(default or [])
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str
     app_version: str
     host: str
     port: int
+    cors_allow_origins: list[str]
+    usage_log_path: str
     pipeline_base_url: str
     pipeline_generate_path: str
     pipeline_api_key: str
@@ -32,6 +40,11 @@ def get_settings() -> Settings:
         app_version=os.getenv("APP_VERSION", "0.1.0"),
         host=os.getenv("HOST", "127.0.0.1"),
         port=int(os.getenv("PORT", "8000")),
+        cors_allow_origins=_as_list(
+            os.getenv("CORS_ALLOW_ORIGINS"),
+            ["http://localhost:5173", "http://127.0.0.1:5173"],
+        ),
+        usage_log_path=os.getenv("USAGE_LOG_PATH", "data/usage_logs/generate_patch_requests.jsonl"),
         pipeline_base_url=os.getenv("PIPELINE_BASE_URL", "").rstrip("/"),
         pipeline_generate_path=os.getenv("PIPELINE_GENERATE_PATH", "/generate-patch"),
         pipeline_api_key=os.getenv("PIPELINE_API_KEY", ""),
