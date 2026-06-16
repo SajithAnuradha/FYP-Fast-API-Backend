@@ -37,25 +37,74 @@ class DeployedPipelineClient:
             "Content-Type": "application/json",
         }
 
+        # prompt = (
+        #     "Return JSON with key 'patches'. Each item must contain "
+        #     "'patchedText', 'explanation', and 'confidence'.\n\n"
+        #     f"File: {request.fileName}\n"
+        #     f"Language: {request.language}\n"
+        #     f"SelectedText:\n{request.selection.selectedText}\n\n"
+        #     f"Before:\n{request.context.before}\n\n"
+        #     f"After:\n{request.context.after}\n\n"
+        #     f"UserFeedback:\n{request.naturalLanguageFeedback}\n"
+        # )
         prompt = (
-            "Return JSON with key 'patches'. Each item must contain "
-            "'patchedText', 'explanation', and 'confidence'.\n\n"
-            f"File: {request.fileName}\n"
-            f"Language: {request.language}\n"
-            f"SelectedText:\n{request.selection.selectedText}\n\n"
-            f"Before:\n{request.context.before}\n\n"
-            f"After:\n{request.context.after}\n\n"
-            f"UserFeedback:\n{request.naturalLanguageFeedback}\n"
-        )
+    "You must generate patches ONLY for the SelectedText section.\n"
+    "Do NOT include, rewrite, modify, or generate code from the Before or After context.\n"
+    "The Before and After sections are provided only to understand surrounding code.\n\n"
+
+    "Return a valid JSON object with exactly this structure:\n"
+    "{\n"
+    '  "patches": [\n'
+    "    {\n"
+    '      "patchedText": "string",\n'
+    '      "explanation": "string",\n'
+    '      "confidence": number\n'
+    "    }\n"
+    "  ]\n"
+    "}\n\n"
+
+    "Rules:\n"
+    "1. patchedText must contain ONLY the replacement for SelectedText.\n"
+    "2. Do not include Before context in patchedText.\n"
+    "3. Do not include After context in patchedText.\n"
+    "4. Do not return markdown, comments outside JSON, or code fences.\n"
+    "5. Preserve the original programming language and style.\n"
+    "6. Keep changes minimal and directly based on UserFeedback.\n"
+    "7. If no safe patch can be generated, return an empty patches array.\n"
+    "8. confidence must be a number between 0 and 1.\n\n"
+
+    f"File: {request.fileName}\n"
+    f"Language: {request.language}\n\n"
+
+    "Context Before SelectedText, read-only:\n"
+    f"{request.context.before}\n\n"
+
+    "SelectedText to patch:\n"
+    f"{request.selection.selectedText}\n\n"
+
+    "Context After SelectedText, read-only:\n"
+    f"{request.context.after}\n\n"
+
+    "UserFeedback:\n"
+    f"{request.naturalLanguageFeedback}\n"
+)
 
         payload = {
-            "model": settings.openai_model,
-            "response_format": {"type": "json_object"},
-            "messages": [
-                {"role": "system", "content": "You are a code patch generator."},
-                {"role": "user", "content": prompt},
-            ],
-        }
+    "model": settings.openai_model,
+    "response_format": {"type": "json_object"},
+    "messages": [
+        {
+            "role": "system",
+            "content": (
+                "You are a precise code patch generator. "
+                "You only replace the selected code region given by the user. "
+                "The surrounding context is read-only and must never be included in the output patch. "
+                "Always return only valid JSON."
+            ),
+        },
+        {"role": "user", "content": prompt},
+    ],
+}
 
         async with httpx.AsyncClient(timeout=settings.pipeline_timeout_seconds) as client:
             response = await client.post(url, json=payload, headers=headers)
