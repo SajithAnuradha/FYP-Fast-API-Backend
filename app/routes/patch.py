@@ -1,3 +1,4 @@
+import asyncio
 import httpx
 import logging
 from fastapi import APIRouter, HTTPException, Request, status
@@ -23,6 +24,7 @@ async def generate_patch(
     error_message: str | None = None
     try:
         response = await patch_service.generate_patch(request)
+        await asyncio.sleep(2)
         return response
     except httpx.HTTPError as exc:
         error_message = f"Upstream pipeline call failed: {str(exc)}"
